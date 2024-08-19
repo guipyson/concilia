@@ -24,6 +24,10 @@ if uploaded_file is not None:
     posicao = pd.read_excel(uploaded_file, sheet_name=1)
     pdd = pd.read_excel(uploaded_file, sheet_name=2)
 
+    razao = razao.dropna(subset=['Código Empresa'])
+    posicao = posicao.dropna(subset=['Empresa'])
+    pdd = pdd.dropna(subset=['Empresa'])
+
     #Código-Cliente por aba
     razao_dict = dict(zip(razao["Código Empresa"], razao["Descrição Empresa"]))
     posicao_dict = dict(zip(posicao["Empresa"], posicao["Nome Completo"]))
@@ -58,12 +62,14 @@ if uploaded_file is not None:
     conciliacao['Diferença'] = conciliacao['Saldo'] - (conciliacao['Débito'] - conciliacao['Crédito'] - conciliacao['PDD'])
     columns_to_round = ['Saldo', 'Débito', 'Crédito', 'PDD', 'Diferença']
     conciliacao[columns_to_round] = conciliacao[columns_to_round].round(2)
-
-    conciliacao["Nome Cliente"] = conciliacao["Empresa"].map(codigo_empresa)
-
+    
+    codigo_empresa_df = pd.DataFrame(list(codigo_empresa.items()), columns=['Codigo', 'Nome Cliente'])
+# Check for duplicate names in 'Nome_Cliente'
+    conciliacao = conciliacao.merge(codigo_empresa_df, how='left', left_on='Empresa', right_on='Codigo')
     conciliacao = conciliacao[["Empresa", "Nome Cliente", "Saldo", "Débito", "Crédito", "PDD", "Diferença"]]
 
     conciliacao["Diferença"] = conciliacao["Diferença"].apply(round_small_values)
+
 
     comparisons = [
     ('Débito', 'Débito', razao),
@@ -88,4 +94,5 @@ if uploaded_file is not None:
             data= output,
             file_name='conciliação.xlsx')
     else:
-        raise ValueError("Not matching")
+        raise st.error("Valores não batem")
+    
